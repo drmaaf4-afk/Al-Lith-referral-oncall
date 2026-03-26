@@ -3,18 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DEBUG 999</title>
-</head>
-<body>
-  <h1>DEBUG 999</h1>
-  <button id="b">TEST BUTTON</button>
-  <div id="m">loaded</div>
+  <title>Referral Login</title>
 
-  <script>
-    document.getElementById("b").addEventListener("click", function () {
-      document.getElementById("m").textContent = "button clicked";
-      alert("clicked");
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body style="font-family: Arial; padding:20px;">
+
+  <h2>Login</h2>
+
+  <input id="email" placeholder="email"><br><br>
+  <input id="password" type="password" placeholder="password"><br><br>
+
+  <button onclick="login()">Login</button>
+
+  <p id="msg"></p>
+
+<script>
+  // 🔴 PUT YOUR REAL VALUES HERE
+  const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
+  const supabaseKey = "YOUR_ANON_KEY";
+
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    document.getElementById("msg").innerText = "Trying...";
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-  </script>
+
+    if (error) {
+      document.getElementById("msg").innerText = "❌ " + error.message;
+      console.error(error);
+    } else {
+      document.getElementById("msg").innerText = "✅ Logged in";
+      console.log(data);
+    }
+  }
+</script>
+
 </body>
 </html>
