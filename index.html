@@ -178,6 +178,7 @@
         .single();
 
       if(error){
+        console.error("getMyProfile error:", error.message);
         return null;
       }
 
@@ -203,8 +204,8 @@
       });
 
       if(error){
-        showError("Sign up failed: " + error.message);
-        alert("Sign up failed: " + error.message);
+        showError("Auth error: " + error.message);
+        alert("Auth error: " + error.message);
         return;
       }
 
@@ -214,22 +215,38 @@
         return;
       }
 
+      if (!data.session) {
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if(loginError){
+          showError("Account created, but auto-login failed: " + loginError.message);
+          alert("Account created, but auto-login failed: " + loginError.message);
+          return;
+        }
+
+        currentUser = loginData.user;
+      } else {
+        currentUser = data.user;
+      }
+
       const { error: profileError } = await supabase
         .from("profiles")
         .insert({
-          id: data.user.id,
+          id: currentUser.id,
           name: name,
           email: email,
           active: true
         });
 
       if(profileError){
-        showError("Profile creation failed: " + profileError.message);
-        alert("Profile creation failed: " + profileError.message);
+        showError("Profile error: " + profileError.message);
+        alert("Profile error: " + profileError.message);
         return;
       }
 
-      currentUser = data.user;
       currentProfile = await getMyProfile();
       updateLoggedBox();
       showSuccess("Account created successfully.");
@@ -339,34 +356,48 @@
     }
 
     async function loadBookings(){
-      const { data, error } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from("referral_bookings")
-        .select(`
-          id,
-          shift_date,
-          doctor_id,
-          profiles (
-            name,
-            email
-          )
-        `)
+        .select("id, shift_date, doctor_id")
         .order("shift_date", { ascending: true });
 
       const list = document.getElementById("list");
       list.innerHTML = "";
 
-      if(error){
-        showError("Load failed: " + error.message);
+      if(bookingsError){
+        showError("Load failed: " + bookingsError.message);
         return;
       }
 
-      if(!data || data.length === 0){
+      if(!bookings || bookings.length === 0){
         list.innerHTML = "<p>No bookings yet.</p>";
         return;
       }
 
-      data.forEach(item => {
-        const doctorName = item.profiles?.name || "Unknown";
+      const doctorIds = [...new Set(bookings.map(item => item.doctor_id).filter(Boolean))];
+
+      let profileMap = {};
+
+      if(doctorIds.length > 0){
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", doctorIds);
+
+        if(profilesError){
+          showError("Could not load doctor names: " + profilesError.message);
+          return;
+        }
+
+        profiles.forEach(profile => {
+          profileMap[profile.id] = profile;
+        });
+      }
+
+      bookings.forEach(item => {
+        const profile = profileMap[item.doctor_id];
+        const doctorName = profile?.name || "Unknown";
+
         const div = document.createElement("div");
         div.className = "card";
         div.innerHTML = `
