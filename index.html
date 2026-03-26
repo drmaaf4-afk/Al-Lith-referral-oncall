@@ -6,55 +6,19 @@
   <title>Referral On-Call</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#f4f6fb;
-      padding:20px;
-      max-width:700px;
-      margin:auto;
-      color:#1f2937;
-    }
-    .section{
-      background:white;
-      padding:18px;
-      border-radius:14px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.08);
-      margin-bottom:18px;
-    }
-    input, button{
-      width:100%;
-      padding:14px;
-      margin-top:10px;
-      border-radius:10px;
-      border:1px solid #cbd5e1;
-      font-size:16px;
-      box-sizing:border-box;
-    }
-    button{
-      background:#2f3f86;
-      color:white;
-      border:none;
-      font-weight:bold;
-      cursor:pointer;
-    }
-    .secondary{ background:#64748b; }
-    .card{
-      background:white;
-      padding:14px;
-      margin-top:10px;
-      border-radius:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.08);
-    }
-    #msg{
-      margin-bottom:15px;
-      font-weight:bold;
-    }
+    body{font-family:Arial,sans-serif;background:#f4f6fb;padding:20px;max-width:700px;margin:auto;color:#1f2937}
+    .section{background:white;padding:18px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:18px}
+    input,button{width:100%;padding:14px;margin-top:10px;border-radius:10px;border:1px solid #cbd5e1;font-size:16px;box-sizing:border-box}
+    button{background:#2f3f86;color:white;border:none;font-weight:bold;cursor:pointer}
+    .secondary{background:#64748b}
+    .card{background:white;padding:14px;margin-top:10px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    #msg{margin-bottom:15px;font-weight:bold;white-space:pre-wrap}
   </style>
 </head>
 <body>
 
 <h1>Referral On-Call</h1>
-<div id="msg"></div>
+<div id="msg">Ready</div>
 
 <div class="section">
   <h2>Login</h2>
@@ -82,20 +46,37 @@ const supabase = window.supabase.createClient(
 );
 
 let currentUser = null;
+let currentProfile = null;
 
-function msg(text, ok = true){
+function setMsg(text, ok = true){
   const el = document.getElementById("msg");
   el.style.color = ok ? "green" : "red";
-  el.innerText = text;
+  el.textContent = text;
 }
 
 function esc(text){
   return String(text || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+async function loadMyProfile() {
+  if (!currentUser) return null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,name,email,active")
+    .eq("id", currentUser.id)
+    .single();
+
+  if (error) {
+    setMsg("Profile lookup failed: " + error.message, false);
+    return null;
+  }
+  return data;
 }
 
 async function loadBookings(){
@@ -104,15 +85,15 @@ async function loadBookings(){
 
   const { data: bookings, error: bErr } = await supabase
     .from("referral_bookings")
-    .select("id, doctor_id, shift_date")
+    .select("id,doctor_id,shift_date")
     .order("shift_date", { ascending: true });
 
-  if(bErr){
-    msg("Load bookings failed: " + bErr.message, false);
+  if (bErr){
+    setMsg("Load bookings failed: " + bErr.message, false);
     return;
   }
 
-  if(!bookings || bookings.length === 0){
+  if (!bookings || bookings.length === 0){
     list.innerHTML = "<p>No bookings yet.</p>";
     return;
   }
@@ -121,11 +102,11 @@ async function loadBookings(){
 
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, name, email")
+    .select("id,name,email")
     .in("id", ids);
 
-  if(pErr){
-    msg("Load profiles failed: " + pErr.message, false);
+  if (pErr){
+    setMsg("Load profiles failed: " + pErr.message, false);
     return;
   }
 
@@ -133,13 +114,10 @@ async function loadBookings(){
   (profiles || []).forEach(p => map[p.id] = p);
 
   bookings.forEach(item => {
-    const profile = map[item.doctor_id];
+    const p = map[item.doctor_id];
     const div = document.createElement("div");
     div.className = "card";
-    div.innerHTML = `
-      <b>${esc(item.shift_date)}</b><br>
-      Doctor: ${esc(profile?.name || "Unknown")}
-    `;
+    div.innerHTML = `<b>${esc(item.shift_date)}</b><br>Doctor: ${esc(p?.name || "Unknown")}`;
     list.appendChild(div);
   });
 }
@@ -148,41 +126,56 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
 
+  if (!email || !password){
+    setMsg("Enter email and password", false);
+    return;
+  }
+
+  setMsg("Signing in...");
+
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if(error){
-    alert(error.message);
-    msg(error.message, false);
+  if (error){
+    setMsg("Login failed: " + error.message, false);
     return;
   }
 
   currentUser = data.user;
-  alert("Logged in");
-  msg("Logged in");
+  currentProfile = await loadMyProfile();
+
+  if (!currentProfile){
+    setMsg("Login succeeded, but no matching profile row was found for this user.", false);
+    return;
+  }
+
+  setMsg("Logged in as " + currentProfile.name + " (" + currentProfile.email + ")");
   await loadBookings();
 });
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   const { error } = await supabase.auth.signOut();
-  if(error){
-    alert(error.message);
-    msg(error.message, false);
+  if (error){
+    setMsg("Logout failed: " + error.message, false);
     return;
   }
   currentUser = null;
-  msg("Logged out");
+  currentProfile = null;
+  setMsg("Logged out");
 });
 
 document.getElementById("bookBtn").addEventListener("click", async () => {
-  if(!currentUser){
-    alert("Login first");
-    msg("Login first", false);
+  if (!currentUser){
+    setMsg("Login first", false);
+    return;
+  }
+  if (!currentProfile){
+    setMsg("Profile missing", false);
     return;
   }
 
   const date = document.getElementById("date").value;
-  if(!date){
-    alert("Select date");
+  if (!date){
+    setMsg("Select a date", false);
     return;
   }
 
@@ -193,14 +186,12 @@ document.getElementById("bookBtn").addEventListener("click", async () => {
       shift_date: date
     });
 
-  if(error){
-    alert(error.message);
-    msg(error.message, false);
+  if (error){
+    setMsg("Booking failed: " + error.message, false);
     return;
   }
 
-  alert("Booked");
-  msg("Booked");
+  setMsg("Booked successfully");
   await loadBookings();
 });
 
