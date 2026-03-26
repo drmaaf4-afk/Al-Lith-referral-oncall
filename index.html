@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JS Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Referral On-Call</title>
+
+  <!-- ✅ FIXED SUPABASE SCRIPT -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
   <style>
     body{
       font-family: Arial, sans-serif;
@@ -20,40 +24,148 @@
       box-shadow:0 2px 8px rgba(0,0,0,0.08);
       margin-bottom:18px;
     }
-    button{
+    input, button{
       width:100%;
       padding:14px;
       margin-top:10px;
       border-radius:10px;
-      border:none;
+      border:1px solid #cbd5e1;
       font-size:16px;
-      box-sizing:border-box;
+    }
+    button{
       background:#2f3f86;
       color:white;
+      border:none;
       font-weight:bold;
       cursor:pointer;
     }
+    .secondary{
+      background:#64748b;
+    }
+    #msg{
+      margin-bottom:15px;
+      font-weight:bold;
+    }
   </style>
 </head>
+
 <body>
-  <h1>Pure JS Test</h1>
-  <div id="status">Loading...</div>
 
-  <div class="section">
-    <button id="btn1">Button 1</button>
-    <button id="btn2">Button 2</button>
-  </div>
+<h1>Referral On-Call</h1>
+<div id="msg"></div>
 
-  <script>
-    document.getElementById("status").textContent = "JavaScript is running";
+<div class="section">
+  <h2>Sign Up</h2>
+  <input id="name" placeholder="Name">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button id="signupBtn">Create Account</button>
+</div>
 
-    document.getElementById("btn1").addEventListener("click", function () {
-      alert("Button 1 works");
+<div class="section">
+  <h2>Login</h2>
+  <input id="loginEmail" placeholder="Email">
+  <input id="loginPassword" type="password" placeholder="Password">
+  <button id="loginBtn">Login</button>
+  <button id="logoutBtn" class="secondary">Logout</button>
+</div>
+
+<script>
+let supabase;
+
+try {
+  supabase = window.supabase.createClient(
+    "https://xhdsufvhwyuhrffxigsn.supabase.co",
+    "sb_publishable_keJ0wHjG_8TjLz_8dGClIQ_kWG7Il2K"
+  );
+  console.log("Supabase loaded");
+} catch(e){
+  alert("Supabase failed: " + e.message);
+}
+
+function msg(text, ok=true){
+  const el = document.getElementById("msg");
+  el.style.color = ok ? "green" : "red";
+  el.innerText = text;
+}
+
+/* SIGNUP */
+document.getElementById("signupBtn").addEventListener("click", async () => {
+  console.log("Signup clicked");
+
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  if(!name || !email || !password){
+    msg("Fill all fields", false);
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email, password
+  });
+
+  if(error){
+    msg(error.message, false);
+    alert(error.message);
+    return;
+  }
+
+  msg("Account created");
+  alert("Account created");
+
+  /* create profile */
+  const { error: pErr } = await supabase
+    .from("profiles")
+    .insert({
+      id: data.user.id,
+      name,
+      email,
+      active: true
     });
 
-    document.getElementById("btn2").addEventListener("click", function () {
-      alert("Button 2 works");
-    });
-  </script>
+  if(pErr){
+    msg(pErr.message, false);
+    alert(pErr.message);
+  }
+});
+
+
+/* LOGIN */
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  console.log("Login clicked");
+
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email, password
+  });
+
+  if(error){
+    msg(error.message, false);
+    alert(error.message);
+    return;
+  }
+
+  msg("Logged in");
+  alert("Logged in");
+});
+
+
+/* LOGOUT */
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  const { error } = await supabase.auth.signOut();
+
+  if(error){
+    msg(error.message, false);
+    return;
+  }
+
+  msg("Logged out");
+});
+</script>
+
 </body>
 </html>
