@@ -3,141 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Referral Login Debug</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#f4f6fb;
-      padding:20px;
-      max-width:700px;
-      margin:auto;
-      color:#1f2937;
-    }
-    h1{ text-align:center; margin-bottom:20px; }
-    .section{
-      background:white;
-      padding:18px;
-      border-radius:14px;
-      box-shadow:0 2px 8px rgba(0,0,0,.08);
-      margin-bottom:18px;
-    }
-    input, button{
-      width:100%;
-      padding:14px;
-      margin-top:10px;
-      border-radius:10px;
-      border:1px solid #cbd5e1;
-      font-size:16px;
-      box-sizing:border-box;
-    }
-    button{
-      background:#2f3f86;
-      color:white;
-      border:none;
-      font-weight:bold;
-      cursor:pointer;
-    }
-    #msg{
-      margin-bottom:15px;
-      font-weight:bold;
-      white-space:pre-wrap;
-    }
-  </style>
+  <title>DEBUG 999</title>
 </head>
 <body>
+  <h1>DEBUG 999</h1>
+  <button id="b">TEST BUTTON</button>
+  <div id="m">loaded</div>
 
-<h1>Referral Login Debug</h1>
-<div id="msg">Page loaded</div>
-
-<div class="section">
-  <h2>Login</h2>
-  <input id="loginEmail" type="email" placeholder="Email" value="drmaaf2008@yahoo.com">
-  <input id="loginPassword" type="password" placeholder="Password">
-  <button id="loginBtn" type="button">Login</button>
-</div>
-
-<script>
-  function setMsg(text, ok = true){
-    const el = document.getElementById("msg");
-    el.style.color = ok ? "green" : "red";
-    el.textContent = text;
-    console.log(text);
-  }
-
-  let supabase;
-
-  try {
-    if (!window.supabase) {
-      setMsg("window.supabase not found", false);
-      throw new Error("window.supabase not found");
-    }
-
-    supabase = window.supabase.createClient(
-      "https://xhdsufvhwyuhrffxigsn.supabase.co",
-      "sb_publishable_keJ0wHjG_8TjLz_8dGClIQ_kWG7Il2K"
-    );
-
-    setMsg("Supabase client created");
-  } catch (e) {
-    setMsg("Supabase init error:\n" + e.message, false);
-  }
-
-  document.getElementById("loginBtn").addEventListener("click", async function () {
-    setMsg("Login button clicked");
-
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value;
-
-    if (!email || !password) {
-      setMsg("Enter email and password", false);
-      return;
-    }
-
-    try {
-      setMsg("Sending login request...");
-
-      const result = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-
-      if (result.error) {
-        setMsg("LOGIN ERROR:\n" + result.error.message, false);
-        return;
-      }
-
-      if (!result.data || !result.data.user) {
-        setMsg("No user returned from login", false);
-        return;
-      }
-
-      const user = result.data.user;
-
-      setMsg("LOGIN OK\nUser ID:\n" + user.id);
-
-      const profileResult = await supabase
-        .from("profiles")
-        .select("id, name, email")
-        .eq("id", user.id)
-        .single();
-
-      if (profileResult.error) {
-        setMsg("Profile lookup error:\n" + profileResult.error.message, false);
-        return;
-      }
-
-      setMsg(
-        "LOGIN OK\n" +
-        "User ID: " + user.id + "\n" +
-        "Name: " + profileResult.data.name + "\n" +
-        "Email: " + profileResult.data.email
-      );
-    } catch (e) {
-      setMsg("UNCAUGHT ERROR:\n" + e.message, false);
-    }
-  });
-</script>
-
+  <script>
+    document.getElementById("b").addEventListener("click", function () {
+      document.getElementById("m").textContent = "button clicked";
+      alert("clicked");
+    });
+  </script>
 </body>
 </html>
