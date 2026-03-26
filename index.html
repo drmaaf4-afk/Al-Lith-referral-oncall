@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Referral On-Call</title>
+  <title>Referral Login Debug</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     body{
@@ -14,10 +14,7 @@
       margin:auto;
       color:#1f2937;
     }
-    h1{
-      text-align:center;
-      margin-bottom:20px;
-    }
+    h1{ text-align:center; margin-bottom:20px; }
     .section{
       background:white;
       padding:18px;
@@ -41,254 +38,106 @@
       font-weight:bold;
       cursor:pointer;
     }
-    button:hover{
-      opacity:.95;
-    }
-    .secondary{
-      background:#64748b;
-    }
-    .card{
-      background:white;
-      padding:14px;
-      margin-top:10px;
-      border-radius:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.08);
-    }
     #msg{
       margin-bottom:15px;
       font-weight:bold;
       white-space:pre-wrap;
     }
-    .logged-box{
-      background:#e8f5e9;
-      border:1px solid #a5d6a7;
-      padding:12px;
-      border-radius:10px;
-      margin-bottom:15px;
-      display:none;
-    }
   </style>
 </head>
 <body>
 
-  <h1>Referral On-Call</h1>
+<h1>Referral Login Debug</h1>
+<div id="msg">Page loaded</div>
 
-  <div id="loggedBox" class="logged-box"></div>
-  <div id="msg">Ready</div>
+<div class="section">
+  <h2>Login</h2>
+  <input id="loginEmail" type="email" placeholder="Email" value="drmaaf2008@yahoo.com">
+  <input id="loginPassword" type="password" placeholder="Password">
+  <button id="loginBtn" type="button">Login</button>
+</div>
 
-  <div class="section">
-    <h2>Login</h2>
-    <input id="loginEmail" type="email" placeholder="Email">
-    <input id="loginPassword" type="password" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <button id="logoutBtn" class="secondary">Logout</button>
-  </div>
+<script>
+  function setMsg(text, ok = true){
+    const el = document.getElementById("msg");
+    el.style.color = ok ? "green" : "red";
+    el.textContent = text;
+    console.log(text);
+  }
 
-  <div class="section">
-    <h2>Book 24h Shift (08 → 08)</h2>
-    <input id="date" type="date">
-    <button id="bookBtn">Book Shift</button>
-  </div>
+  let supabase;
 
-  <div class="section">
-    <h2>All Bookings</h2>
-    <div id="list"></div>
-  </div>
+  try {
+    if (!window.supabase) {
+      setMsg("window.supabase not found", false);
+      throw new Error("window.supabase not found");
+    }
 
-  <script>
-    const supabase = window.supabase.createClient(
+    supabase = window.supabase.createClient(
       "https://xhdsufvhwyuhrffxigsn.supabase.co",
       "sb_publishable_keJ0wHjG_8TjLz_8dGClIQ_kWG7Il2K"
     );
 
-    let currentUser = null;
-    let currentProfile = null;
+    setMsg("Supabase client created");
+  } catch (e) {
+    setMsg("Supabase init error:\n" + e.message, false);
+  }
 
-    function setMsg(text, ok = true){
-      const el = document.getElementById("msg");
-      el.style.color = ok ? "green" : "red";
-      el.textContent = text;
+  document.getElementById("loginBtn").addEventListener("click", async function () {
+    setMsg("Login button clicked");
+
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    if (!email || !password) {
+      setMsg("Enter email and password", false);
+      return;
     }
 
-    function esc(text){
-      return String(text || "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
+    try {
+      setMsg("Sending login request...");
 
-    function updateLoggedBox(){
-      const box = document.getElementById("loggedBox");
-      if(currentUser && currentProfile){
-        box.style.display = "block";
-        box.innerHTML = `Logged in as <b>${esc(currentProfile.name)}</b><br>${esc(currentProfile.email)}`;
-      } else {
-        box.style.display = "none";
-        box.innerHTML = "";
+      const result = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (result.error) {
+        setMsg("LOGIN ERROR:\n" + result.error.message, false);
+        return;
       }
-    }
 
-    async function loadMyProfile() {
-      if (!currentUser) return null;
+      if (!result.data || !result.data.user) {
+        setMsg("No user returned from login", false);
+        return;
+      }
 
-      const { data, error } = await supabase
+      const user = result.data.user;
+
+      setMsg("LOGIN OK\nUser ID:\n" + user.id);
+
+      const profileResult = await supabase
         .from("profiles")
-        .select("id,name,email,active")
-        .eq("id", currentUser.id)
+        .select("id, name, email")
+        .eq("id", user.id)
         .single();
 
-      if (error) {
-        setMsg("Profile lookup failed:\n" + error.message, false);
-        return null;
+      if (profileResult.error) {
+        setMsg("Profile lookup error:\n" + profileResult.error.message, false);
+        return;
       }
 
-      return data;
+      setMsg(
+        "LOGIN OK\n" +
+        "User ID: " + user.id + "\n" +
+        "Name: " + profileResult.data.name + "\n" +
+        "Email: " + profileResult.data.email
+      );
+    } catch (e) {
+      setMsg("UNCAUGHT ERROR:\n" + e.message, false);
     }
+  });
+</script>
 
-    async function loadBookings(){
-      const list = document.getElementById("list");
-      list.innerHTML = "";
-
-      const { data: bookings, error: bErr } = await supabase
-        .from("referral_bookings")
-        .select("id,doctor_id,shift_date,status")
-        .order("shift_date", { ascending: true });
-
-      if (bErr){
-        setMsg("Load bookings failed:\n" + bErr.message, false);
-        return;
-      }
-
-      if (!bookings || bookings.length === 0){
-        list.innerHTML = "<p>No bookings yet.</p>";
-        return;
-      }
-
-      const ids = [...new Set(bookings.map(x => x.doctor_id).filter(Boolean))];
-
-      const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
-        .select("id,name,email")
-        .in("id", ids);
-
-      if (pErr){
-        setMsg("Load profiles failed:\n" + pErr.message, false);
-        return;
-      }
-
-      const map = {};
-      (profiles || []).forEach(p => map[p.id] = p);
-
-      bookings.forEach(item => {
-        const p = map[item.doctor_id];
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <b>${esc(item.shift_date)}</b><br>
-          Doctor: ${esc(p?.name || "Unknown")}<br>
-          Status: ${esc(item.status || "booked")}
-        `;
-        list.appendChild(div);
-      });
-    }
-
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value;
-
-      if (!email || !password){
-        setMsg("Enter email and password", false);
-        return;
-      }
-
-      setMsg("Trying login...");
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error){
-        setMsg("LOGIN ERROR:\n" + error.message, false);
-        return;
-      }
-
-      currentUser = data.user;
-      currentProfile = await loadMyProfile();
-
-      if (!currentProfile){
-        setMsg("Login succeeded, but no matching profile row was found.", false);
-        updateLoggedBox();
-        return;
-      }
-
-      updateLoggedBox();
-      setMsg("LOGIN OK\nName: " + currentProfile.name + "\nEmail: " + currentProfile.email);
-      await loadBookings();
-    });
-
-    document.getElementById("logoutBtn").addEventListener("click", async () => {
-      const { error } = await supabase.auth.signOut();
-
-      if (error){
-        setMsg("Logout failed:\n" + error.message, false);
-        return;
-      }
-
-      currentUser = null;
-      currentProfile = null;
-      updateLoggedBox();
-      setMsg("Logged out");
-    });
-
-    document.getElementById("bookBtn").addEventListener("click", async () => {
-      if (!currentUser){
-        setMsg("Login first", false);
-        return;
-      }
-
-      if (!currentProfile){
-        currentProfile = await loadMyProfile();
-        if (!currentProfile){
-          setMsg("Profile missing", false);
-          return;
-        }
-      }
-
-      const date = document.getElementById("date").value;
-      if (!date){
-        setMsg("Select a date", false);
-        return;
-      }
-
-      const { error } = await supabase
-        .from("referral_bookings")
-        .insert({
-          doctor_id: currentUser.id,
-          shift_date: date
-        });
-
-      if (error){
-        setMsg("Booking failed:\n" + error.message, false);
-        return;
-      }
-
-      setMsg("Booked successfully");
-      await loadBookings();
-    });
-
-    async function restoreSession(){
-      const { data, error } = await supabase.auth.getUser();
-
-      if (!error && data && data.user){
-        currentUser = data.user;
-        currentProfile = await loadMyProfile();
-        updateLoggedBox();
-      }
-
-      await loadBookings();
-    }
-
-    restoreSession();
-  </script>
 </body>
 </html>
