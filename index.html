@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Referral Test</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <title>JS Test</title>
   <style>
     body{
       font-family: Arial, sans-serif;
@@ -21,60 +20,40 @@
       box-shadow:0 2px 8px rgba(0,0,0,0.08);
       margin-bottom:18px;
     }
-    input, button{
+    button{
       width:100%;
       padding:14px;
       margin-top:10px;
       border-radius:10px;
-      border:1px solid #cbd5e1;
+      border:none;
       font-size:16px;
       box-sizing:border-box;
-    }
-    button{
       background:#2f3f86;
       color:white;
-      border:none;
       font-weight:bold;
       cursor:pointer;
-    }
-    #status{
-      font-weight:bold;
-      margin-bottom:16px;
     }
   </style>
 </head>
 <body>
-  <h1>Referral Test</h1>
+  <h1>Pure JS Test</h1>
   <div id="status">Loading...</div>
 
   <div class="section">
-    <input type="text" id="testName" placeholder="Name">
-    <button onclick="testClick()">Test Button</button>
-    <button onclick="testSignup()">Test Signup Alert</button>
+    <button id="btn1">Button 1</button>
+    <button id="btn2">Button 2</button>
   </div>
 
   <script>
-    let supabase = null;
+    document.getElementById("status").textContent = "JavaScript is running";
 
-    try {
-      supabase = window.supabase.createClient(
-        "https://xhdsufvhwyuhrffxigsn.supabase.co",
-        "sb_publishable_keJ0wHjG_8TjLz_8dGClIQ_kWG7Il2K"
-      );
-      document.getElementById("status").innerText = "JS loaded successfully";
-    } catch (e) {
-      document.getElementById("status").innerText = "JS error: " + e.message;
-      alert("JS error: " + e.message);
-    }
+    document.getElementById("btn1").addEventListener("click", function () {
+      alert("Button 1 works");
+    });
 
-    function testClick(){
-      alert("Button click works");
-    }
-
-    async function testSignup(){
-      alert("Signup function started");
-      console.log("Signup function started");
-    }
+    document.getElementById("btn2").addEventListener("click", function () {
+      alert("Button 2 works");
+    });
   </script>
 </body>
 </html>
